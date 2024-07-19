@@ -10,11 +10,9 @@ COPY . .
 
 RUN npm cache clean --force
 
-RUN npm install -g typescript prisma 
+RUN npm install -g typescript prisma node-pre-gyp node-gyp
 
 RUN cd node_modules/bcrypt
-
-RUN npm install -g node-gyp
 
 RUN node-pre-gyp install --fallback-to-build
 
