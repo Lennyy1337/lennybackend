@@ -14,6 +14,8 @@ RUN npm install -g typescript prisma
 
 RUN cd node_modules/bcrypt
 
+RUN npm install -g node-gyp
+
 RUN node-pre-gyp install --fallback-to-build
 
 RUN cd ../..
