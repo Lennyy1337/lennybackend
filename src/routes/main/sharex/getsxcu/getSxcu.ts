@@ -16,7 +16,7 @@ function generateSxcu(jwt: string, domain: string): string {
       },
       "Body": "MultipartFormData",
       "FileFormName": "file",
-      "URL": "${domain}/uploads/{json:data.fileKey}"
+      "URL": "https://${domain}/uploads/{json:data}"
     }`;
 
   return sxcuTemplate;
