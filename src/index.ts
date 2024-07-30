@@ -19,6 +19,10 @@ const pipelineAsync = util.promisify(pipeline);
 
 dotenv.config();
 
+if (!fs.existsSync("uploads")) {
+  fs.mkdirSync("uploads");
+}
+
 fastify.register(ratelimit, {
   max: 10,
   ban: 3,

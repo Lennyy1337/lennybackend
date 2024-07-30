@@ -10,7 +10,7 @@ function generateSxcu(jwt: string, domain: string): string {
       "Name": "Lenny.host (${domain})",
       "DestinationType": "ImageUploader",
       "RequestMethod": "POST",
-      "RequestURL": "${domain}/upload",
+      "RequestURL": "https://${domain}/upload",
       "Headers": {
         "authorization": "${jwt}"
       },
@@ -49,8 +49,9 @@ export async function getSxcuRoute() {
       const sxcu = generateSxcu(newToken, domain as string);
       const filename = `${domain}.${uuid.randomUUID()}.sxcu`;
       const path = `uploads/${filename}`;
-      const file = await fs.promises.writeFile(path, sxcu);
 
+      const file = await fs.promises.writeFile(path, sxcu);
+      console.log("wtf")
       reply.send({
         success: true,
         message: "Success",
