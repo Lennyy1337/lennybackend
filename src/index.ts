@@ -10,12 +10,14 @@ import * as path from "path";
 import fs from "fs";
 
 import ratelimit from "@fastify/rate-limit";
+import { prisma } from "./init/prisma";
+import axios from "axios";
+
+import util from 'util';
+import { pipeline } from 'stream';
+const pipelineAsync = util.promisify(pipeline);
 
 dotenv.config();
-
-if (!fs.existsSync("uploads")) {
-  fs.mkdirSync("uploads");
-}
 
 fastify.register(ratelimit, {
   max: 10,
@@ -25,11 +27,6 @@ fastify.register(ratelimit, {
 
 router();
 
-fastify.register(fastifyStatic, {
-  root: path.join(__dirname, "../uploads"),
-  prefix: "/uploads",
-});
-
 fastify.get("/uploads/:filekey", async function (req, reply) {
   const { filekey } = req.params as any;
   const filextension = filekey.split(".").pop();
@@ -38,7 +35,26 @@ fastify.get("/uploads/:filekey", async function (req, reply) {
     fs.rmSync(`uploads/${filekey}`);
     return;
   }
-  reply.sendFile(filekey);
+  
+  const signedUrl = await prisma.upload.findUnique({
+    where: {
+      fileKey: filekey
+    }
+  })
+
+  if(!signedUrl){
+    reply.code(404).send({success: false, message: "no file found"})
+    return
+  }
+  
+  const response = await axios.get(signedUrl.signedUrl, {
+    responseType: 'stream',
+  });
+
+  const headers = response.headers as Record<string, any>;
+  reply.raw.writeHead(response.status, headers);
+
+  await pipelineAsync(response.data, reply.raw);
 });
 
 fastify.get("/", function (req, reply) {

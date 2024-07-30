@@ -46,19 +46,12 @@ export async function uploadRoute() {
 
       const FileKey = await FileManager.uploadFile(
         file as Readable,
-        data.filename
+        data.filename,
+        data.mimetype,
+        user?.id
       );
 
-      const upload = await prisma.upload.create({
-        data: {
-          mimetype: data.mimetype,
-          fileKey: FileKey,
-          fileName: data.filename,
-          userId: user?.id as string,
-        },
-      });
-
-      reply.send({ success: true, message: "Uploaded!", data: upload });
+      reply.send({ success: true, message: "Uploaded!", data: FileKey.fileKey });
     } catch (e: any) {
       if (e.message.includes("is not allowed")) {
         reply
