@@ -31,6 +31,12 @@ fastify.register(ratelimit, {
 
 router();
 
+fastify.register(fastifyStatic, {
+  root: path.join(__dirname, "../uploads"),
+  prefix: "/uploads",
+});
+
+
 fastify.get("/uploads/:filekey", async function (req, reply) {
   const { filekey } = req.params as any;
   const filextension = filekey.split(".").pop();
