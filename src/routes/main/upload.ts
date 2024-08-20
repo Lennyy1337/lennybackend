@@ -64,6 +64,9 @@ export async function uploadRoute() {
         .send({ success: false, message: "Internal Server Error." });
       console.log("Error in upload;");
       console.log(e);
+      if(e.$response){
+        console.log(e.$response}
+      }
     }
   });
 }
