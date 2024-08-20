@@ -65,7 +65,7 @@ export async function uploadRoute() {
       console.log("Error in upload;");
       console.log(e);
       if(e.$response){
-        console.log(e.$response}
+        console.log(e.$response)
       }
     }
   });
