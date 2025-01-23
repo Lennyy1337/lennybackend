@@ -1,5 +1,5 @@
 import fileManager from "../tools/fileManager";
 
-const FileManager = new fileManager("uploads")
+const FileManager = new fileManager()
 
 export default FileManager

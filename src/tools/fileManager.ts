@@ -6,31 +6,19 @@ import { prisma } from "../init/prisma";
 import { jwt } from "../init/jwt";
 import s3 from "../init/s3";
 import { upload } from "@prisma/client";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 
 function bufferToStream(binary: any) {
-    return new Readable({
-        read() {
-            this.push(binary);
-            this.push(null);
-        }
-    });
-}
-
-interface file {
-  id: string;
-  mimetype: string;
-  fileKey: string;
-  fileName: string;
-  userId: string;
-  signedUrl: string;
+  return new Readable({
+    read() {
+      this.push(binary);
+      this.push(null);
+    },
+  });
 }
 
 export default class fileManager {
-  declare filepath: string;
-
-  constructor(filepath: string) {
-    this.filepath = filepath;
-  }
 
   async getFile(fileKey: string): Promise<string | null> {
     try {
@@ -39,7 +27,7 @@ export default class fileManager {
           fileKey: fileKey,
         },
         select: {
-          signedUrl: true,
+          fileKey: true,
         },
       });
 
@@ -47,57 +35,63 @@ export default class fileManager {
         return null;
       }
 
-      return fileRecord.signedUrl;
+      const publicUrl = `http://${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET}/${fileKey}`;
+
+      return publicUrl;
     } catch (error) {
       console.error("Error fetching file URL:", error);
       return null;
     }
   }
 
-  async uploadFile(
-    fileStream: Readable,
-    originalFileName: string,
-    contentType: string,
-    userId: string
-  ): Promise<upload> {
-    const fileExtension = path.extname(originalFileName);
-    const fileKey = uuidv4() + fileExtension;
-
-    return new Promise<upload>((resolve, reject) => {
-      const chunks: Buffer[] = [];
-      fileStream.on("data", (chunk) => {
-        chunks.push(chunk);
-      });
-      fileStream.on("end", async () => {
-        const fileData = Buffer.concat(chunks);
-        try {
-          const stream = bufferToStream(fileData)
-
-          await s3.uploadObject(fileKey, stream as any, contentType);
-          const signedUrl = await s3.getSignedUrl(fileKey);
-
-          const upload = await prisma.upload.create({
-            data: {
-              fileKey: fileKey,
-              fileName: originalFileName,
-              userId: userId,
-              mimetype: contentType,
-              signedUrl: signedUrl,
-            },
-          });
-
-          resolve(upload);
-        } catch (err) {
-          reject(err);
-        }
-      });
-      fileStream.on("error", (err) => {
-        reject(err);
-      });
+  async upload(
+    key: string,
+    body: Readable | Buffer,
+    contentType: string
+  ): Promise<void> {
+    const upload = new Upload({
+      client: s3,
+      params: {
+        Bucket: process.env.S3_BUCKET,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      },
     });
+  
+    await upload.done();
   }
 
-  async getUserFiles(jwtToken: string): Promise<file[] | null> {
+async uploadFile(
+  fileStream: Readable,
+  originalFileName: string,
+  contentType: string,
+  userId: string
+): Promise<upload> {
+  const fileExtension = path.extname(originalFileName);
+  const fileKey = uuidv4() + fileExtension;
+
+  try {
+    // Stream directly to S3 without buffering
+    await this.upload(fileKey, fileStream, contentType);
+
+    const publicUrl = `https://${process.env.S3_BUCKET}.${process.env.S3_REGION}.amazonaws.com/${fileKey}`;
+
+    return await prisma.upload.create({
+      data: {
+        fileKey: fileKey,
+        fileName: originalFileName,
+        userId: userId,
+        mimetype: contentType,
+      },
+    });
+  } catch (err) {
+    console.error("Error during file upload:", err);
+    throw new Error("Failed to upload file to S3");
+  }
+}
+
+  async getUserFiles(jwtToken: string): Promise<upload[] | null> {
     const user = await jwt.getUserFromJWT(jwtToken);
 
     if (!user) {
