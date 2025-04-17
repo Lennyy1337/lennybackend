@@ -39,45 +39,36 @@ fastify.register(fastifyStatic, {
 
 fastify.get("/uploads/:filekey", async function (req, reply) {
   const { filekey } = req.params as any;
-
   const filextension = filekey.split(".").pop();
   if (filextension == "sxcu") {
-      await reply.download(filekey);
-      fs.rmSync(`uploads/${filekey}`);
-      return;
+    await reply.download(filekey);
+    fs.rmSync(`uploads/${filekey}`);
+    return;
   }
+  
+  const signedUrl = await prisma.upload.findUnique({
+    where: {
+      fileKey: filekey
+    }
+  })
 
-  const fileRecord = await prisma.upload.findUnique({
-      where: {
-          fileKey: filekey,
-      },
+  if(!signedUrl){
+    reply.code(404).send({success: false, message: "no file found"})
+    return
+  }
+  
+  const response = await axios.get(signedUrl.signedUrl, {
+    responseType: 'stream',
   });
 
-  if (!fileRecord) {
-      reply.code(404).send({ success: false, message: "No file found" });
-      return;
-  }
+  const headers = response.headers as Record<string, any>;
+  reply.raw.writeHead(response.status, headers);
 
-  const publicUrl = `${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET}/${filekey}`;
-
-  try {
-      const response = await axios.get(publicUrl, {
-          responseType: "stream",
-      });
-
-      const headers = response.headers as Record<string, any>;
-      reply.raw.writeHead(response.status, headers);
-
-      await pipelineAsync(response.data, reply.raw);
-  } catch (error) {
-      console.error("Error streaming file:", error);
-      reply.code(500).send({ success: false, message: "Failed to stream file" });
-  }
+  await pipelineAsync(response.data, reply.raw);
 });
 
 fastify.get("/", function (req, reply) {
-  //reply.redirect("https://lenny.host");
-  reply.send("works")
+  reply.redirect("https://lenny.host");
 });
 
 fastify.register(multipart, {
@@ -86,10 +77,10 @@ fastify.register(multipart, {
   },
 });
 
-fastify.listen({ port: 3001, host: "0.0.0.0" }, function (err, address) {
+fastify.listen({ port: 3000, host: "0.0.0.0" }, function (err, address) {
   console.log(`LennyHost Listening on ${address}`);
   if (err) {
-    console.error(err);
+    fastify.log.error(err);
     process.exit(1);
   }
 });

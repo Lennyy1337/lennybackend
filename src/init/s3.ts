@@ -1,13 +1,13 @@
-import { S3Client } from '@aws-sdk/client-s3';
+import { Storage } from "@veltahq/storage";
 
-export const s3 = new S3Client({
+export const s3 = new Storage({
     credentials: {
         accessKeyId: process.env.S3_ACCESS_KEY as string,
         secretAccessKey: process.env.S3_ACCESS_SECRET_KEY as string,
     },
-    endpoint: process.env.S3_ENDPOINT,
-    region: process.env.S3_REGION,
     forcePathStyle: true,
+    region: process.env.S3_REGION as string,
+    bucket: process.env.S3_BUCKET as string,
 });
 
-export default s3;
+export default s3

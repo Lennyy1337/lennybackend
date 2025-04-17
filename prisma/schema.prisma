@@ -32,7 +32,7 @@ model upload {
   id        String @unique @default(uuid())
   mimetype  String
   fileKey   String @unique
-
+  signedUrl String 
   fileName  String
   user      user   @relation(fields: [userId], references: [id])
   userId    String
